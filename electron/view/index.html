@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="https://kit.fontawesome.com/fa9f029c66.js" crossorigin="anonymous"></script>
+    <style>
+        .body {
+            height: 100%;
+            width: 100%;
+            display: flex;
+            margin-top : 5px;
+        }
+
+        .thumbnail {
+            flex: 1;
+            box-sizing: border-box;
+            width: 40%;
+        }
+
+        .directory {
+            flex: 1;
+            width: 40%;
+            margin-left: 5px;
+        }
+
+        .directory li {
+            list-style-type: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <div style="display: flex;">
+                <input type="text" id="txt_destinationURL" v-model="destinationURL" style="width:85%"
+                    placeholder="http://yongsungshoptest.dahaeinc.co.kr/upload.aspx?sid=dherptoweb&folder=/BANNER_Image">
+                <input type="button" value="Send" @click="sendImage()">
+        </div>
+        <div class="body">
+            <div class="thumbnail">
+                <div>
+                    <img src="" alt="" id="img_thumbnail">
+                </div>
+            </div>
+            <div id="div_directory" class="directory">
+                <div class="selectFile">
+                    <input type="file" id="selectFile" accept="image/png, image/jpeg, image/jpg" @change="selectFile()">
+                </div>
+                <ul v-for="item in directorylist">
+                    <li @click="item.isImage ? showImage(item.file) : moveDirectory(item.file)">
+                        <i v-bind:class="[ item.isImage ? 'fas fa-image' : 'far fa-folder-open']"></i> {{ item.file }}
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script>
+        var app = new Vue({
+            el: '#app',
+            data: {
+                destinationURL: '',
+                directory: '',
+                directorylist: [],
+                fileName: '',
+                fileData : []
+            },
+            created() {
+                this.destinationURL = this.localStorageGetItem('destinationURL');
+                this.directory = this.localStorageGetItem('directory');
+                this.directorylist = this.getDirectoryList(this.directory == '' ? '/' : this.directory);
+            },
+            watch: {
+                destinationURL(val) {
+                    localStorage.setItem('destinationURL', val);
+                },
+                directory(val) {
+                    localStorage.setItem('directory', val);
+                }
+            },
+            methods: {
+                localStorageGetItem(key) {
+                    var temp = localStorage.getItem(key);
+                    if (temp != null && temp != undefined)
+                        return temp;
+                    else
+                        return '';
+                },
+                getDirectoryList(directory) {
+                    const fs = require('fs');
+                    var list = [];
+                    list.push({ file: '..', isImage: false })
+                    fs.readdirSync(directory).forEach(file => {
+                        if (file.includes('.jpg') || file.includes('.png') || file.includes('.jpeg') || file.includes('.png'))
+                            list.push({ file: file, isImage: true });
+                        else if (!file.includes('.'))
+                            list.push({ file: file, isImage: false });
+                    });
+                    return list;
+                },
+                moveDirectory(folderName) {
+                    if (this.directory == '/') this.directory = '';
+                    this.directory = this.directory + '/' + folderName;
+                    this.directorylist = this.getDirectoryList(this.directory);
+                },
+                showImage(fileName) {
+                    axios.get(this.directory == '/' ? '' : this.directory + '/' + fileName, { responseType: 'blob' })
+                        .then(response => this.blobToImage(response.data));
+                    this.fileName = fileName;
+                },
+                selectFile() {
+                    var file = document.querySelector('#selectFile').files[0];
+                    this.blobToImage(file);
+                    this.fileName = file.name;
+                },
+                blobToImage(blob) {
+                    this.fileData = blob;
+                    var reader = new FileReader();
+                    reader.readAsDataURL(blob);
+                    reader.onload = function () {
+                        var img = document.querySelector('#img_thumbnail');
+                        img.src = reader.result;
+                        var imgWidth = img.clientWidth;
+                        var imgHeight = img.clientHeight;
+
+                        if (parseInt(imgWidth) >= parseInt(imgHeight)) {
+                            img.style.width = '100%';
+                            img.style.height = 'auto';
+                        }
+                        else {
+                            img.style.width = 'auto';
+                            img.style.height = '100%';
+                            Buffer
+                        }
+                    };
+                },
+                sendImage() {
+                    if (this.fileName == '' || this.fileName === undefined || this.fileName === null)
+                        return alert('이미지 파일을 선택해주세요.');
+                    var formData = new FormData();
+                    formData.append(this.fileName, this.fileData);
+                    axios.post(this.destinationURL + '&filename=' + this.fileName, formData, {headers: {'Content-Type' : 'multipart/form-data'}})
+                    .then(function(response) {
+                        alert("성공적으로 전송하였습니다.");
+                    })
+                    .catch(function(error) {
+                        alert("에러가 발생하였습니다.\r\n" + error);
+                    })
+                }
+            },
+        });
+    </script>
+</body>
+
+</html>
